@@ -4,4 +4,5 @@ dist
 *.json
 !package.json
 !package-lock.json
+!vercel.json
 supabase/.temp
