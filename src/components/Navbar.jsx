@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { HardDrive, CheckCircle2, AlertCircle } from 'lucide-react'
+import { HardDrive, CheckCircle2 } from 'lucide-react'
 
 export default function Navbar() {
   const [session, setSession] = useState(null)
@@ -76,9 +76,10 @@ export default function Navbar() {
               <CheckCircle2 className="h-3.5 w-3.5" /> Drive connected
             </span>
           ) : (
-            <button onClick={handleConnectDrive} className="text-xs text-destructive/80 hover:text-destructive flex items-center gap-1 transition-colors">
-              <AlertCircle className="h-3.5 w-3.5" /> Drive not connected
-            </button>
+            <Button variant="outline" size="sm" onClick={handleConnectDrive} className="text-xs">
+              <HardDrive className="mr-1 h-3 w-3" />
+              Connect Drive
+            </Button>
           )}
           <span className="text-xs text-muted-foreground hidden sm:inline">
             {session.user.email}
