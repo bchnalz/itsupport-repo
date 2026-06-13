@@ -4,7 +4,7 @@ import { useDownloads } from '@/lib/downloadContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Search, Download, File, Calendar, User, X, Tag } from 'lucide-react'
+import { Search, Download, File, X, Tag } from 'lucide-react'
 
 const HIGHLIGHT_CLASSES = "inline bg-amber-200/60 dark:bg-amber-500/30 rounded-sm px-0.5"
 
@@ -160,61 +160,61 @@ export default function Home() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              <th className="text-left font-medium text-muted-foreground py-2 px-3">File</th>
-              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Tags</th>
-              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Size</th>
-              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden lg:table-cell">Date</th>
-              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden xl:table-cell">Notes</th>
-              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden lg:table-cell">By</th>
-              <th className="py-2 px-3"></th>
+              <th className="text-left font-medium text-muted-foreground py-1.5 px-2">File</th>
+              <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden sm:table-cell w-[72px]">Size</th>
+              <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden md:table-cell w-[96px]">Date</th>
+              <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden lg:table-cell w-[128px]">By</th>
+              <th className="py-1.5 px-2 w-0"></th>
             </tr>
           </thead>
           <tbody>
             {files.map((file) => (
               <tr key={file.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                <td className="py-2.5 px-3">
-                  <div className="flex items-start gap-2">
+                <td className="py-1.5 px-2">
+                  <div className="flex items-start gap-2 min-w-0">
                     <File className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                      <span className="font-medium truncate block">
-                        {highlightText(file.title, searchWords)}
-                      </span>
-                      {file.file_name && file.file_name !== file.title && (
-                        <span className="text-xs text-muted-foreground truncate block">
-                          {highlightText(file.file_name, searchWords)}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium truncate">
+                          {highlightText(file.title, searchWords)}
                         </span>
+                        {file.file_name && file.file_name !== file.title && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            ({highlightText(file.file_name, searchWords)})
+                          </span>
+                        )}
+                      </div>
+                      {file.tagIds?.length > 0 && (
+                        <div className="flex flex-wrap gap-0.5 mt-0.5">
+                          {file.tagIds.map((tid) => (
+                            <Badge
+                              key={tid}
+                              variant="secondary"
+                              className="text-[10px] px-1.5 py-0 cursor-pointer hover:bg-primary/20 leading-normal"
+                              onClick={() => toggleTag(tid)}
+                            >
+                              {getTagName(tid)}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {file.notes && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{file.notes}</p>
                       )}
                     </div>
                   </div>
                 </td>
-                <td className="py-2.5 px-3 hidden sm:table-cell">
-                  <div className="flex flex-wrap gap-1">
-                    {file.tagIds?.map((tid) => (
-                      <Badge
-                        key={tid}
-                        variant="secondary"
-                        className="text-[10px] px-1.5 py-0 cursor-pointer hover:bg-primary/20"
-                        onClick={() => toggleTag(tid)}
-                      >
-                        {getTagName(tid)}
-                      </Badge>
-                    ))}
-                  </div>
-                </td>
-                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden sm:table-cell">
+                <td className="py-1.5 px-2 text-muted-foreground text-xs tabular-nums hidden sm:table-cell">
                   {formatSize(file.file_size)}
                 </td>
-                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden lg:table-cell">
-                  <div className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(file.created_at).toLocaleDateString()}</div>
+                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden md:table-cell whitespace-nowrap">
+                  {new Date(file.created_at).toLocaleDateString()}
                 </td>
-                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden xl:table-cell max-w-[160px] truncate">
-                  {file.notes || '-'}
+                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden lg:table-cell truncate max-w-[128px]">
+                  {file.uploaded_by_email || '-'}
                 </td>
-                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden lg:table-cell">
-                  <div className="flex items-center gap-1"><User className="h-3 w-3" />{file.uploaded_by_email || '-'}</div>
-                </td>
-                <td className="py-2.5 px-3">
-                  <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
+                <td className="py-1.5 px-2">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(file)}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </td>
