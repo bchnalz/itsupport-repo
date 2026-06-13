@@ -3,22 +3,23 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { HardDrive } from 'lucide-react'
+import { HardDrive, CheckCircle2 } from 'lucide-react'
 
 export default function Navbar() {
   const [session, setSession] = useState(null)
   const [role, setRole] = useState(null)
+  const [driveConnected, setDriveConnected] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) fetchRole(session.user.id)
+      if (session) { fetchRole(session.user.id); checkDrive(session.user.id) }
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) fetchRole(session.user.id)
-      else setRole(null)
+      if (session) { fetchRole(session.user.id); checkDrive(session.user.id) }
+      else { setRole(null); setDriveConnected(false) }
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -26,6 +27,11 @@ export default function Navbar() {
   const fetchRole = async (userId) => {
     const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).single()
     setRole(data?.role || null)
+  }
+
+  const checkDrive = async (userId) => {
+    const { data } = await supabase.from('user_tokens').select('user_id').eq('user_id', userId).single()
+    setDriveConnected(!!data)
   }
 
   const handleLogout = async () => {
@@ -65,10 +71,16 @@ export default function Navbar() {
           )}
         </nav>
         <div className="ml-auto flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleConnectDrive} className="text-xs">
-            <HardDrive className="mr-1 h-3 w-3" />
-            Connect Drive
-          </Button>
+          {driveConnected ? (
+            <span className="text-xs text-emerald-600 flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Drive connected
+            </span>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleConnectDrive} className="text-xs">
+              <HardDrive className="mr-1 h-3 w-3" />
+              Connect Drive
+            </Button>
+          )}
           <span className="text-xs text-muted-foreground hidden sm:inline">
             {session.user.email}
           </span>
