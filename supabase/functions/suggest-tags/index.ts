@@ -1,3 +1,5 @@
+import { getUserId } from "../_shared/auth.ts";
+
 const DEEPSEEK_KEY = Deno.env.get("DEEPSEEK_API_KEY")!;
 
 export const corsHeaders = {
@@ -11,6 +13,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require authentication
+    getUserId(req.headers.get("authorization") || "");
+
     const { title, fileName } = await req.json();
     if (!title) {
       return new Response(JSON.stringify({ tags: [] }), {
@@ -56,8 +61,9 @@ Example: ["excel", "laporan", "keuangan", "2025"]`;
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-  } catch {
-    return new Response(JSON.stringify({ tags: [] }), {
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

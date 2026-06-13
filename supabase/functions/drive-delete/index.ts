@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAccessToken } from "../_shared/driveAuth.ts";
+import { requireAdmin } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -9,28 +10,35 @@ export const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function getUserId(authHeader: string): string {
-  try {
-    const token = authHeader.replace("Bearer ", "");
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.sub;
-  } catch {
-    throw new Error("Authentication required");
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const userId = getUserId(req.headers.get("authorization") || "");
-    const token = await getAccessToken(userId);
+    await requireAdmin(req.headers.get("authorization") || "");
+
     const { fileId, dbId } = await req.json();
 
     if (!fileId) {
       return new Response(JSON.stringify({ error: "fileId required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Use the admin's Drive token (first user who connected Drive)
+    // Fallback: try to get any available token
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const { data: tokenUser } = await supabase
+      .from("user_tokens")
+      .select("user_id")
+      .limit(1)
+      .single();
+
+    const token = tokenUser ? await getAccessToken(tokenUser.user_id) : null;
+    if (!token) {
+      return new Response(JSON.stringify({ error: "No Drive token available" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -49,7 +57,6 @@ Deno.serve(async (req) => {
     }
 
     if (dbId) {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
       await supabase.from("files").delete().eq("id", dbId);
     }
 
@@ -58,7 +65,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
+      status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
