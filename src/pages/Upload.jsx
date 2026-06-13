@@ -153,6 +153,7 @@ export default function Upload() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
+                className="text-sm"
               />
             </div>
 
@@ -192,7 +193,7 @@ export default function Upload() {
                   value={customTag}
                   onChange={(e) => setCustomTag(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag() } }}
-                  className="h-8 text-xs"
+                  className="h-8 text-sm"
                 />
                 <Button type="button" variant="outline" size="sm" onClick={addCustomTag} className="h-8 shrink-0">
                   <Plus className="h-3 w-3" />
@@ -208,6 +209,7 @@ export default function Upload() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
+                className="text-sm"
               />
             </div>
 

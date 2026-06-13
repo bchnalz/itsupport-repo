@@ -52,6 +52,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -64,7 +65,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pr-10"
+                  className="pr-10 text-sm"
                 />
                 <button
                   type="button"

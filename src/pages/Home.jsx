@@ -153,7 +153,7 @@ export default function Home() {
           placeholder='Search files...'
           value={search}
           onChange={(e) => { setSearch(e.target.value); setTagFilter(null) }}
-          className="pl-9 pr-9 h-10 text-base text-center placeholder:text-center"
+          className="pl-9 pr-9 h-10 text-sm text-center placeholder:text-center"
           autoFocus
         />
         {search && (
@@ -350,7 +350,7 @@ function AddTagButton({ onAdd }) {
     <span className="inline-flex items-center gap-0.5">
       <input value={val} onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setOpen(false) }}
-        placeholder="tag" className="w-16 h-5 text-[10px] border rounded px-1 bg-transparent" autoFocus />
+        placeholder="tag" className="w-16 h-6 text-sm border rounded px-1 bg-transparent" autoFocus />
       <button onClick={handleAdd} className="text-[10px] text-primary">add</button>
       <button onClick={() => setOpen(false)} className="text-[10px] text-muted-foreground"><X className="h-2.5 w-2.5" /></button>
     </span>

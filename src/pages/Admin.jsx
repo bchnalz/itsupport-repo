@@ -189,7 +189,7 @@ export default function Admin() {
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
-                  className="flex-1"
+                  className="flex-1 text-sm"
                 />
                 <Button onClick={handleCreateTag}>
                   <Plus className="mr-1 h-4 w-4" /> Create
@@ -226,14 +226,14 @@ export default function Admin() {
                   placeholder="Email"
                   value={newUserEmail}
                   onChange={(e) => setNewUserEmail(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 text-sm"
                 />
                 <Input
                   type="password"
                   placeholder="Password"
                   value={newUserPassword}
                   onChange={(e) => setNewUserPassword(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 text-sm"
                 />
                 <Select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)} className="w-full sm:w-28">
                   <option value="staff">Staff</option>
