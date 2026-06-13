@@ -2,13 +2,17 @@ const CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
 const REDIRECT_URI = "https://vufzatynwjzbuwtkdquv.supabase.co/functions/v1/oauth-callback";
 
 Deno.serve((req) => {
-  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  url.searchParams.set("client_id", CLIENT_ID);
-  url.searchParams.set("redirect_uri", REDIRECT_URI);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "https://www.googleapis.com/auth/drive");
-  url.searchParams.set("access_type", "offline");
-  url.searchParams.set("prompt", "consent");
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token") || "";
 
-  return Response.redirect(url.toString(), 302);
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authUrl.searchParams.set("client_id", CLIENT_ID);
+  authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/drive");
+  authUrl.searchParams.set("access_type", "offline");
+  authUrl.searchParams.set("prompt", "consent");
+  authUrl.searchParams.set("state", token);
+
+  return Response.redirect(authUrl.toString(), 302);
 });

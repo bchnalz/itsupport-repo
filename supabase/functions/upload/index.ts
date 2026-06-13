@@ -10,13 +10,32 @@ export const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function parseJWT(authHeader: string): { sub: string; email: string } | null {
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return { sub: payload.sub, email: payload.email || "" };
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const token = await getAccessToken();
+    const jwt = parseJWT(req.headers.get("authorization") || "");
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const driveToken = await getAccessToken(jwt.sub);
+
     const formData = await req.formData();
     const file = formData.get("file");
     const title = formData.get("title")?.toString() || file.name;
@@ -46,7 +65,7 @@ Deno.serve(async (req) => {
       "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${driveToken}` },
         body: form,
       }
     );
@@ -69,6 +88,8 @@ Deno.serve(async (req) => {
       drive_file_id: driveFile.id,
       file_size: file.size,
       mime_type: file.type,
+      uploaded_by: jwt.sub,
+      uploaded_by_email: jwt.email,
     });
 
     if (dbError) {

@@ -37,7 +37,7 @@ function ProtectedRoute({ children, adminOnly = false }) {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  if (loading) return <div className="loading">Loading...</div>
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><p className="text-muted-foreground">Loading...</p></div>
   if (!session) return <Navigate to="/login" replace />
   if (adminOnly && role !== 'admin') return <Navigate to="/" replace />
   return <>{children}</>
@@ -45,14 +45,16 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
 export default function App() {
   return (
-    <>
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-        <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
-      </Routes>
-    </>
+      <main>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+        </Routes>
+      </main>
+    </div>
   )
 }

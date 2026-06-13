@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { Eye, EyeOff, LogIn, HardDrive } from 'lucide-react'
 
 export default function Navbar() {
   const [session, setSession] = useState(null)
@@ -17,21 +23,50 @@ export default function Navbar() {
     navigate('/login')
   }
 
+  const handleConnectDrive = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      window.open(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/oauth-auth?token=${session.access_token}`,
+        '_blank'
+      )
+    }
+  }
+
   if (!session) return null
 
   return (
-    <nav>
-      <div>
-        <Link to="/">Home</Link>
-        <Link to="/upload">Upload</Link>
-        <Link to="/admin">Admin</Link>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-14 items-center px-6">
+        <div className="flex items-center gap-1 font-semibold text-sm mr-8">
+          <HardDrive className="h-4 w-4" />
+          <span>itsupport-repo</span>
+        </div>
+        <nav className="flex items-center gap-1 text-sm">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/">Home</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/upload">Upload</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/admin">Admin</Link>
+          </Button>
+        </nav>
+        <div className="ml-auto flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={handleConnectDrive} className="text-xs">
+            <HardDrive className="mr-1 h-3 w-3" />
+            Connect Drive
+          </Button>
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {session.user.email}
+          </span>
+          <Separator orientation="vertical" className="h-4 hidden sm:block" />
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            Logout
+          </Button>
+        </div>
       </div>
-      <div>
-        <span style={{ marginRight: '1rem', fontSize: '13px', opacity: 0.8 }}>
-          {session.user.email}
-        </span>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
-    </nav>
+    </header>
   )
 }
