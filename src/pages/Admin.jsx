@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
-import { Plus, Shield, Tags, Users, X } from 'lucide-react'
+import { Plus, Shield, Tags, Users, X, Trash2 } from 'lucide-react'
 
 export default function Admin() {
   const [users, setUsers] = useState([])
