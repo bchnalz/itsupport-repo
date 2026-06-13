@@ -8,12 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Trash2, Pencil, Plus, Shield, Tags, FileText, Users, X } from 'lucide-react'
+import { Plus, Shield, Tags, Users, X } from 'lucide-react'
 
 export default function Admin() {
-  const [files, setFiles] = useState([])
-  const [categories, setCategories] = useState([])
   const [users, setUsers] = useState([])
   const [newTag, setNewTag] = useState('')
   const [tags, setTags] = useState([])
@@ -22,20 +19,13 @@ export default function Admin() {
   const [newUserRole, setNewUserRole] = useState('staff')
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState(null)
 
   useEffect(() => {
-    loadFiles()
     loadTags()
     loadUsers()
   }, [])
 
   const showMsg = (msg, type = '') => { setMessage(msg); setMessageType(type); setTimeout(() => setMessage(''), 4000) }
-
-  const loadFiles = async () => {
-    const { data } = await supabase.from('files').select('*').order('created_at', { ascending: false })
-    setFiles(data || [])
-  }
 
   const loadTags = async () => {
     const { data } = await supabase.from('tags').select('*').order('name')
@@ -45,25 +35,6 @@ export default function Admin() {
   const loadUsers = async () => {
     const { data, error } = await supabase.from('user_roles').select('*').order('created_at')
     if (!error) setUsers(data || [])
-  }
-
-  const handleDeleteFile = async () => {
-    if (!deleteTarget) return
-    await supabase.functions.invoke('drive-delete', {
-      body: { fileId: deleteTarget.drive_file_id, dbId: deleteTarget.id }
-    })
-    await supabase.from('files').delete().eq('id', deleteTarget.id)
-    setDeleteTarget(null)
-    loadFiles()
-    showMsg('File deleted', 'success')
-  }
-
-  const handleEditFile = async (file) => {
-    const newTitle = prompt('New title:', file.title)
-    if (!newTitle) return
-    await supabase.from('files').update({ title: newTitle }).eq('id', file.id)
-    loadFiles()
-    showMsg('Title updated', 'success')
   }
 
   const handleCreateTag = async () => {
@@ -114,7 +85,7 @@ export default function Admin() {
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Admin Panel</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage files, categories, and users.</p>
+        <p className="text-sm text-muted-foreground mt-1">Manage tags and user accounts.</p>
       </div>
 
       {message && (
@@ -123,58 +94,11 @@ export default function Admin() {
         </p>
       )}
 
-      <Tabs defaultValue="files">
+      <Tabs defaultValue="tags">
         <TabsList>
-          <TabsTrigger value="files"><FileText className="mr-1 h-4 w-4" /> Files</TabsTrigger>
           <TabsTrigger value="tags"><Tags className="mr-1 h-4 w-4" /> Tags</TabsTrigger>
           <TabsTrigger value="users"><Users className="mr-1 h-4 w-4" /> Users</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="files">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">All Files</CardTitle>
-              <CardDescription>{files.length} files in repository</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {files.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No files.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead className="hidden md:table-cell">Drive ID</TableHead>
-                        <TableHead className="hidden sm:table-cell">Created</TableHead>
-                        <TableHead className="w-0"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {files.map((f) => (
-                        <TableRow key={f.id}>
-                          <TableCell className="font-medium min-w-0 max-w-0"><span className="truncate block">{f.title}</span></TableCell>
-                          <TableCell className="hidden md:table-cell text-xs text-muted-foreground font-mono">{f.drive_file_id}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{new Date(f.created_at).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => handleEditFile(f)} className="h-9 w-9 p-0">
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(f)} className="h-9 w-9 p-0">
-                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="tags">
           <Card>
@@ -280,23 +204,6 @@ export default function Admin() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete File</DialogTitle>
-            <DialogDescription>
-              Delete "{deleteTarget?.title}" from Google Drive and the database? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteFile}>
-              <Trash2 className="mr-1 h-4 w-4" /> Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
