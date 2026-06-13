@@ -23,65 +23,53 @@ export default function Home() {
   const { startDownload } = useDownloads() || {}
   const [files, setFiles] = useState([])
   const [allTags, setAllTags] = useState([])
+  const [recentTags, setRecentTags] = useState([])
   const [search, setSearch] = useState('')
   const [tagFilter, setTagFilter] = useState(null)
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [role, setRole] = useState(null)
+  const [editing, setEditing] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editNotes, setEditNotes] = useState('')
 
   const searchWords = search.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0)
 
   useEffect(() => {
     supabase.from('tags').select('*').order('name').then(({ data }) => setAllTags(data || []))
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        supabase.from('user_roles').select('role').eq('user_id', session.user.id).single()
+          .then(({ data }) => setRole(data?.role || null))
+      }
+    })
   }, [])
 
   const fetchFiles = useCallback(async (searchTerm, tagId) => {
-    if (!searchTerm && !tagId) {
-      setFiles([])
-      setHasSearched(false)
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setHasSearched(true)
+    if (!searchTerm && !tagId) { setFiles([]); setHasSearched(false); setLoading(false); return }
+    setLoading(true); setHasSearched(true)
 
     const words = searchTerm.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0)
-
-    let query = supabase
-      .from('files')
-      .select('*')
-      .order('created_at', { ascending: false })
+    let query = supabase.from('files').select('*').order('created_at', { ascending: false })
 
     if (tagId) {
-      const { data: tagged } = await supabase
-        .from('file_tags')
-        .select('file_id')
-        .eq('tag_id', tagId)
+      const { data: tagged } = await supabase.from('file_tags').select('file_id').eq('tag_id', tagId)
       const fileIds = (tagged || []).map(t => t.file_id)
       if (fileIds.length === 0) { setFiles([]); setLoading(false); return }
       query = query.in('id', fileIds)
     }
-
     if (words.length > 0) {
-      const conditions = words.map(w => `title.ilike.%${w}%,file_name.ilike.%${w}%`).join(',')
-      query = query.or(conditions)
+      query = query.or(words.map(w => `title.ilike.%${w}%,file_name.ilike.%${w}%`).join(','))
     }
 
     const { data, error } = await query
     if (error) console.error('Fetch error:', error.message)
 
     const unique = data ? data.filter((f, i, arr) => arr.findIndex(x => x.id === f.id) === i) : []
-
-    const enriched = await Promise.all(
-      unique.map(async (f) => {
-        const { data: ftags } = await supabase
-          .from('file_tags')
-          .select('tag_id')
-          .eq('file_id', f.id)
-        return { ...f, tagIds: (ftags || []).map(t => t.tag_id) }
-      })
-    )
-
+    const enriched = await Promise.all(unique.map(async (f) => {
+      const { data: ftags } = await supabase.from('file_tags').select('tag_id').eq('file_id', f.id)
+      return { ...f, tagIds: (ftags || []).map(t => t.tag_id) }
+    }))
     setFiles(enriched)
     setLoading(false)
   }, [])
@@ -91,14 +79,18 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [search, tagFilter, fetchFiles])
 
-  const handleDownload = (file) => {
-    if (startDownload) startDownload(file)
+  const handleDownload = (file) => { if (startDownload) startDownload(file) }
+  const clearSearch = () => { setSearch(''); setTagFilter(null) }
+
+  const toggleTag = (tagId) => {
+    setTagFilter(prev => prev === tagId ? null : tagId)
+    setRecentTags(prev => {
+      const rest = prev.filter(id => id !== tagId)
+      return [tagId, ...rest].slice(0, 5)
+    })
   }
 
-  const clearSearch = () => { setSearch(''); setTagFilter(null) }
-  const toggleTag = (tagId) => setTagFilter(prev => prev === tagId ? null : tagId)
   const getTagName = (id) => allTags.find(t => t.id === id)?.name || ''
-
   const formatSize = (bytes) => {
     if (!bytes) return '-'
     const units = ['B', 'KB', 'MB', 'GB']
@@ -106,6 +98,40 @@ export default function Home() {
     while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++ }
     return `${bytes.toFixed(1)} ${units[i]}`
   }
+
+  const startEdit = (file) => {
+    setEditing(file.id)
+    setEditTitle(file.title)
+    setEditNotes(file.notes || '')
+  }
+
+  const saveEdit = async (fileId) => {
+    await supabase.from('files').update({ title: editTitle, notes: editNotes || null }).eq('id', fileId)
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, title: editTitle, notes: editNotes } : f))
+    setEditing(null)
+  }
+
+  const removeFileTag = async (fileId, tagId) => {
+    await supabase.from('file_tags').delete().eq('file_id', fileId).eq('tag_id', tagId)
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, tagIds: f.tagIds.filter(t => t !== tagId) } : f))
+  }
+
+  const addFileTag = async (fileId, tagName) => {
+    const clean = tagName.toLowerCase().trim()
+    if (!clean) return
+    let { data: tag } = await supabase.from('tags').select('id').eq('name', clean).single()
+    if (!tag) {
+      const { data: created } = await supabase.from('tags').insert({ name: clean }).select('id').single()
+      tag = created
+      if (created) setAllTags(prev => [...prev, { id: created.id, name: clean }])
+    }
+    if (tag) {
+      await supabase.from('file_tags').upsert({ file_id: fileId, tag_id: tag.id }, { onConflict: 'file_id,tag_id' })
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, tagIds: [...f.tagIds, tag.id] } : f))
+    }
+  }
+
+  const displayedTags = recentTags.length > 0 ? recentTags : allTags.slice(0, 5).map(t => t.id)
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
@@ -115,14 +141,14 @@ export default function Home() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder='Try "driver epson" or "laporan 2025"...'
           value={search}
           onChange={(e) => { setSearch(e.target.value); setTagFilter(null) }}
-          className="pl-9 pr-9 h-10 text-base"
+          className="pl-9 pr-9 h-10 text-base text-center placeholder:text-center"
           autoFocus
         />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         {search && (
           <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
@@ -130,30 +156,25 @@ export default function Home() {
         )}
       </div>
 
-      {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+      {displayedTags.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-1.5">
           <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
-          {allTags.map((tag) => (
+          {displayedTags.map((tid) => (
             <Badge
-              key={tag.id}
-              variant={tagFilter === tag.id ? 'default' : 'secondary'}
+              key={tid}
+              variant={tagFilter === tid ? 'default' : 'secondary'}
               className="cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => toggleTag(tag.id)}
+              onClick={() => toggleTag(tid)}
             >
-              {tag.name}
+              {getTagName(tid)}
             </Badge>
           ))}
         </div>
       )}
 
-      {loading && (
-        <p className="text-center text-sm text-muted-foreground py-8">Searching...</p>
-      )}
-
+      {loading && <p className="text-center text-sm text-muted-foreground py-8">Searching...</p>}
       {!loading && hasSearched && files.length === 0 && (
-        <p className="text-center text-sm text-muted-foreground py-8">
-          No files match{tagFilter ? ` tag "${getTagName(tagFilter)}"` : ''}{search ? ` "${search}"` : ''}.
-        </p>
+        <p className="text-center text-sm text-muted-foreground py-8">No files match.</p>
       )}
 
       {!loading && files.length > 0 && (
@@ -169,50 +190,80 @@ export default function Home() {
           </thead>
           <tbody>
             {files.map((file) => (
-              <tr key={file.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+              <tr key={file.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors group">
                 <td className="py-1.5 px-2">
                   <div className="flex items-start gap-2 min-w-0">
                     <File className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium truncate">
-                          {highlightText(file.title, searchWords)}
-                        </span>
-                        {file.file_name && file.file_name !== file.title && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            ({highlightText(file.file_name, searchWords)})
-                          </span>
-                        )}
-                      </div>
-                      {file.tagIds?.length > 0 && (
-                        <div className="flex flex-wrap gap-0.5 mt-0.5">
-                          {file.tagIds.map((tid) => (
-                            <Badge
-                              key={tid}
-                              variant="secondary"
-                              className="text-[10px] px-1.5 py-0 cursor-pointer hover:bg-primary/20 leading-normal"
-                              onClick={() => toggleTag(tid)}
-                            >
-                              {getTagName(tid)}
-                            </Badge>
-                          ))}
+                    <div className="min-w-0 flex-1">
+                      {editing === file.id ? (
+                        <div className="space-y-1">
+                          <Input
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            className="h-7 text-sm"
+                            autoFocus
+                            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(file.id); if (e.key === 'Escape') setEditing(null) }}
+                          />
+                          <Input
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            placeholder="Notes..."
+                            className="h-7 text-xs"
+                            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(file.id) }}
+                          />
+                          <div className="flex gap-1">
+                            <Button size="sm" className="h-6 text-xs" onClick={() => saveEdit(file.id)}>Save</Button>
+                            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditing(null)}>Cancel</Button>
+                          </div>
                         </div>
-                      )}
-                      {file.notes && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{file.notes}</p>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`font-medium truncate ${role === 'admin' ? 'cursor-pointer hover:text-primary' : ''}`}
+                              onClick={() => role === 'admin' && startEdit(file)}
+                              title={role === 'admin' ? 'Click to edit' : ''}
+                            >
+                              {highlightText(file.title, searchWords)}
+                            </span>
+                            {file.file_name && file.file_name !== file.title && (
+                              <span className="text-xs text-muted-foreground truncate">
+                                ({highlightText(file.file_name, searchWords)})
+                              </span>
+                            )}
+                          </div>
+                          {file.notes && (
+                            <p
+                              className={`text-xs text-muted-foreground mt-0.5 truncate ${role === 'admin' ? 'cursor-pointer hover:text-foreground' : ''}`}
+                              onClick={() => role === 'admin' && startEdit(file)}
+                            >
+                              {file.notes}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-0.5 mt-0.5">
+                            {file.tagIds?.map((tid) => (
+                              <Badge key={tid} variant="secondary" className="text-[10px] px-1.5 py-0 leading-normal group cursor-pointer hover:bg-primary/20" onClick={() => toggleTag(tid)}>
+                                {getTagName(tid)}
+                                {role === 'admin' && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); removeFileTag(file.id, tid) }}
+                                    className="ml-0.5 hover:text-destructive"
+                                  ><X className="h-2.5 w-2.5 inline" /></button>
+                                )}
+                              </Badge>
+                            ))}
+                            {role === 'admin' && (
+                              <AddTagButton onAdd={(name) => addFileTag(file.id, name)} />
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
                 </td>
-                <td className="py-1.5 px-2 text-muted-foreground text-xs tabular-nums hidden sm:table-cell">
-                  {formatSize(file.file_size)}
-                </td>
-                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden md:table-cell whitespace-nowrap">
-                  {new Date(file.created_at).toLocaleDateString()}
-                </td>
-                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden lg:table-cell truncate max-w-[128px]">
-                  {file.uploaded_by_email || '-'}
-                </td>
+                <td className="py-1.5 px-2 text-muted-foreground text-xs tabular-nums hidden sm:table-cell">{formatSize(file.file_size)}</td>
+                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden md:table-cell whitespace-nowrap">{new Date(file.created_at).toLocaleDateString()}</td>
+                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden lg:table-cell truncate max-w-[128px]">{file.uploaded_by_email || '-'}</td>
                 <td className="py-1.5 px-2">
                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(file)}>
                     <Download className="h-4 w-4" />
@@ -224,5 +275,33 @@ export default function Home() {
         </table>
       )}
     </div>
+  )
+}
+
+function AddTagButton({ onAdd }) {
+  const [open, setOpen] = useState(false)
+  const [val, setVal] = useState('')
+
+  const handleAdd = () => {
+    if (val.trim()) { onAdd(val.trim()); setVal(''); setOpen(false) }
+  }
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)} className="text-[10px] text-muted-foreground border border-dashed rounded px-1.5 py-0 hover:border-primary hover:text-primary transition-colors">+ tag</button>
+  )
+
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setOpen(false) }}
+        placeholder="tag"
+        className="w-16 h-5 text-[10px] border rounded px-1 bg-transparent"
+        autoFocus
+      />
+      <button onClick={handleAdd} className="text-[10px] text-primary">add</button>
+      <button onClick={() => setOpen(false)} className="text-[10px] text-muted-foreground"><X className="h-2.5 w-2.5" /></button>
+    </span>
   )
 }
