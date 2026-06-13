@@ -40,7 +40,7 @@ export default function Home() {
         .order('created_at', { ascending: false })
 
       if (search) {
-        query = query.ilike('title', `%${search}%`)
+        query = query.or(`title.ilike.%${search}%,file_name.ilike.%${search}%`)
       }
       if (categoryFilter) {
         query = query.eq('category_id', categoryFilter)
@@ -141,7 +141,12 @@ export default function Home() {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="truncate max-w-[200px]">{file.title}</span>
+                      <div>
+                        <span className="truncate max-w-[200px] block">{file.title}</span>
+                        {file.file_name && file.file_name !== file.title && (
+                          <span className="text-xs text-muted-foreground">{file.file_name}</span>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">

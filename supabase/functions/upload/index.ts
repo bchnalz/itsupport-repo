@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
       drive_file_id: driveFile.id,
       file_size: file.size,
       mime_type: file.type,
+      file_name: file.name,
       uploaded_by: jwt.sub,
       uploaded_by_email: jwt.email,
     });
