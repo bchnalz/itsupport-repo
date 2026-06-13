@@ -32,21 +32,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink,webViewLink`,
+    const metaRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const meta = await metaRes.json();
+
+    const fileRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    if (!res.ok) {
-      return new Response(JSON.stringify({ error: "Failed to get file" }), {
-        status: res.status,
+    if (!fileRes.ok) {
+      return new Response(JSON.stringify({ error: "Download failed" }), {
+        status: fileRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await res.json();
-    return new Response(JSON.stringify({ url: data.webContentLink || data.webViewLink }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const blob = await fileRes.blob();
+    return new Response(blob, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": meta.mimeType || "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${meta.name || "download"}"`,
+      },
     });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {

@@ -48,10 +48,36 @@ export default function Home() {
   }, [search, categoryFilter, fetchFiles])
 
   const handleDownload = async (file) => {
-    const { data } = await supabase.functions.invoke('drive-download', {
-      body: { fileId: file.drive_file_id }
-    })
-    if (data?.url) window.open(data.url, '_blank')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-download`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ fileId: file.drive_file_id }),
+      }
+    )
+
+    if (!res.ok) return
+
+    const blob = await res.blob()
+    const disposition = res.headers.get('Content-Disposition')
+    let filename = 'download'
+    if (disposition) {
+      const match = disposition.match(/filename="?([^";\n]+)"?/)
+      if (match) filename = match[1]
+    }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const clearSearch = () => {
