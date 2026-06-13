@@ -63,7 +63,7 @@ export default function App() {
     <DownloadContext.Provider value={dm}>
       <div className="min-h-screen bg-background">
         <Navbar />
-        <main>
+        <main className="pb-14">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
