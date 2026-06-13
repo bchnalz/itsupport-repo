@@ -216,11 +216,6 @@ export default function Home() {
                             ({highlightText(file.file_name, searchWords)})
                           </span>
                         )}
-                        {role === 'admin' && (
-                          <button onClick={() => openEdit(file)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity ml-1">
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                        )}
                       </div>
                       {file.notes && (
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{file.notes}</p>
@@ -246,9 +241,16 @@ export default function Home() {
                 <td className="py-1.5 px-2 text-muted-foreground text-xs hidden md:table-cell whitespace-nowrap">{new Date(file.created_at).toLocaleDateString()}</td>
                 <td className="py-1.5 px-2 text-muted-foreground text-xs hidden lg:table-cell truncate max-w-[128px]">{file.uploaded_by_email || '-'}</td>
                 <td className="py-1.5 px-2">
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(file)}>
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(file)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    {role === 'admin' && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(file)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
