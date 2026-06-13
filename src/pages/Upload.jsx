@@ -1,32 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
-import { UploadCloud } from 'lucide-react'
+import { UploadCloud, Tag, Tags } from 'lucide-react'
 
 export default function Upload() {
   const [title, setTitle] = useState('')
-  const [categoryId, setCategoryId] = useState('')
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState(null)
-  const [categories, setCategories] = useState([])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('')
-
-  useEffect(() => {
-    supabase
-      .from('categories')
-      .select('*')
-      .order('name')
-      .then(({ data }) => setCategories(data || []))
-  }, [])
+  const [tags, setTags] = useState([])
 
   const handleUpload = async (e) => {
     e.preventDefault()
@@ -36,11 +27,11 @@ export default function Upload() {
     setProgress(0)
     setMessage('')
     setMessageType('')
+    setTags([])
 
     const formData = new FormData()
     formData.append('file', file)
     formData.append('title', title)
-    formData.append('categoryId', categoryId)
     formData.append('notes', notes)
 
     const { data: { session } } = await supabase.auth.getSession()
@@ -57,10 +48,11 @@ export default function Upload() {
     xhr.onload = () => {
       setUploading(false)
       if (xhr.status === 200) {
+        const res = JSON.parse(xhr.responseText)
         setMessage('File uploaded successfully.')
         setMessageType('success')
+        setTags(res.tags || [])
         setTitle('')
-        setCategoryId('')
         setNotes('')
         setFile(null)
       } else {
@@ -68,7 +60,7 @@ export default function Upload() {
           const err = JSON.parse(xhr.responseText)
           setMessage(err.detail || err.error || 'Upload failed')
         } catch {
-          setMessage('Upload failed: ' + xhr.responseText)
+          setMessage('Upload failed')
         }
         setMessageType('error')
       }
@@ -83,11 +75,17 @@ export default function Upload() {
     xhr.send(formData)
   }
 
+  const handleFileChange = (e) => {
+    const f = e.target.files[0]
+    setFile(f)
+    if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ''))
+  }
+
   return (
     <div className="max-w-lg mx-auto px-6 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Upload File</h1>
-        <p className="text-sm text-muted-foreground mt-1">Upload a file to the shared repository.</p>
+        <p className="text-sm text-muted-foreground mt-1">Files are auto-tagged for search.</p>
       </div>
 
       <Card>
@@ -97,7 +95,7 @@ export default function Upload() {
               <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
-                placeholder="File title"
+                placeholder="e.g. Epson L121 Driver v2.1"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
@@ -105,25 +103,13 @@ export default function Upload() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">Uncategorized</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.parent_id ? '└ ' : ''}{cat.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
-                placeholder="Optional notes..."
+                placeholder="Optional context (helps tag generation)..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
+                rows={2}
               />
             </div>
 
@@ -132,7 +118,7 @@ export default function Upload() {
               <Input
                 id="file"
                 type="file"
-                onChange={(e) => setFile(e.target.files[0])}
+                onChange={handleFileChange}
                 required
               />
             </div>
@@ -144,6 +130,22 @@ export default function Upload() {
                   <span className="text-muted-foreground">{progress}%</span>
                 </div>
                 <Progress value={progress} />
+              </div>
+            )}
+
+            {tags.length > 0 && (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Tags className="h-3.5 w-3.5" /> Auto-generated tags
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((tag, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      <Tag className="mr-1 h-3 w-3" />
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
 
