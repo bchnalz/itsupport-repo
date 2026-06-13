@@ -43,7 +43,7 @@ export default function Admin() {
   }
 
   const loadUsers = async () => {
-    const { data, error } = await supabase.from('user_roles').select('*, user:user_id(email)')
+    const { data, error } = await supabase.from('user_roles').select('*').order('created_at')
     if (!error) setUsers(data || [])
   }
 
@@ -255,7 +255,7 @@ export default function Admin() {
                   <TableBody>
                     {users.map((u) => (
                       <TableRow key={u.id}>
-                        <TableCell className="font-medium">{u.user?.email || '-'}</TableCell>
+                        <TableCell className="font-medium">{u.email || u.user_id}</TableCell>
                         <TableCell>
                           <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>
                             <Shield className="mr-1 h-3 w-3" />

@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
   const { error: roleError } = await supabase.from("user_roles").insert({
     user_id: user.user.id,
     role,
+    email,
   });
 
   if (roleError) {
