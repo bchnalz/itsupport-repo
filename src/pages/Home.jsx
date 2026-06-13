@@ -3,8 +3,6 @@ import { supabase } from '../supabaseClient'
 import { useDownloads } from '@/lib/downloadContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Select } from '@/components/ui/select'
 import { Search, Download, File, Calendar, User, X } from 'lucide-react'
 
@@ -14,7 +12,8 @@ export default function Home() {
   const [categories, setCategories] = useState([])
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
 
   useEffect(() => {
     supabase
@@ -25,7 +24,15 @@ export default function Home() {
   }, [])
 
   const fetchFiles = useCallback(async (searchTerm, categoryId) => {
+    if (!searchTerm && !categoryId) {
+      setFiles([])
+      setHasSearched(false)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
+    setHasSearched(true)
     let query = supabase
       .from('files')
       .select('*')
@@ -39,7 +46,7 @@ export default function Home() {
     }
 
     const { data, error } = await query
-    if (error) console.error('Fetch error:', error.message, error.details)
+    if (error) console.error('Fetch error:', error.message)
     setFiles(data || [])
     setLoading(false)
   }, [])
@@ -73,108 +80,104 @@ export default function Home() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Files</h1>
-        <p className="text-sm text-muted-foreground mt-1">Browse and download repository files.</p>
+    <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Repository</h1>
+        <p className="text-sm text-muted-foreground mt-1">Search to find files.</p>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search files by title..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-9"
-              />
-              {search && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            <Select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full sm:w-48"
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search files by title..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 pr-9 h-10 text-base"
+            autoFocus
+          />
+          {search && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <option value="">All categories</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-full sm:w-44"
+        >
+          <option value="">All categories</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </Select>
+      </div>
 
-      <Card>
-        {loading ? (
-          <CardContent className="py-12 text-center text-muted-foreground">Loading...</CardContent>
-        ) : files.length === 0 ? (
-          <CardContent className="py-12 text-center text-muted-foreground">
-            {search || categoryFilter ? 'No files match your search.' : 'No files found.'}
-          </CardContent>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead className="hidden md:table-cell">Filename</TableHead>
-                <TableHead className="hidden md:table-cell">Category</TableHead>
-                <TableHead className="hidden sm:table-cell">Size</TableHead>
-                <TableHead className="hidden lg:table-cell">Date</TableHead>
-                <TableHead className="hidden lg:table-cell">Uploaded by</TableHead>
-                <TableHead className="w-0"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {files.map((file) => (
-                <TableRow key={file.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="truncate max-w-[160px]">{file.title}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[120px] truncate">
-                    {file.file_name || '-'}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {getCategoryName(file.category_id)}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                    {formatSize(file.file_size)}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(file.created_at).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {file.uploaded_by_email || '-'}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" onClick={() => handleDownload(file)}>
-                      <Download className="mr-1 h-3 w-3" />
-                      Download
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+      {loading && (
+        <p className="text-center text-sm text-muted-foreground py-8">Searching...</p>
+      )}
+
+      {!loading && hasSearched && files.length === 0 && (
+        <p className="text-center text-sm text-muted-foreground py-8">No files match your search.</p>
+      )}
+
+      {!loading && files.length > 0 && (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left font-medium text-muted-foreground py-2 px-3">Title</th>
+              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden md:table-cell">Filename</th>
+              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Category</th>
+              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Size</th>
+              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden lg:table-cell">Date</th>
+              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden lg:table-cell">By</th>
+              <th className="py-2 px-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {files.map((file) => (
+              <tr key={file.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                <td className="py-2.5 px-3 font-medium">
+                  <div className="flex items-center gap-2">
+                    <File className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="truncate max-w-[180px]">{file.title}</span>
+                  </div>
+                </td>
+                <td className="py-2.5 px-3 text-muted-foreground hidden md:table-cell max-w-[120px] truncate">
+                  {file.file_name || '-'}
+                </td>
+                <td className="py-2.5 px-3 text-muted-foreground hidden sm:table-cell">
+                  {getCategoryName(file.category_id)}
+                </td>
+                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden sm:table-cell">
+                  {formatSize(file.file_size)}
+                </td>
+                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden lg:table-cell">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(file.created_at).toLocaleDateString()}
+                  </div>
+                </td>
+                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden lg:table-cell">
+                  <div className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {file.uploaded_by_email || '-'}
+                  </div>
+                </td>
+                <td className="py-2.5 px-3">
+                  <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   )
 }
