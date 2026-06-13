@@ -9,14 +9,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Trash2, Pencil, Plus, Shield, FolderTree, FileText, Users } from 'lucide-react'
+import { Trash2, Pencil, Plus, Shield, Tags, FileText, Users, X } from 'lucide-react'
 
 export default function Admin() {
   const [files, setFiles] = useState([])
   const [categories, setCategories] = useState([])
   const [users, setUsers] = useState([])
-  const [newCategory, setNewCategory] = useState('')
-  const [parentCategory, setParentCategory] = useState('')
+  const [newTag, setNewTag] = useState('')
+  const [tags, setTags] = useState([])
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserPassword, setNewUserPassword] = useState('')
   const [newUserRole, setNewUserRole] = useState('staff')
@@ -26,7 +26,7 @@ export default function Admin() {
 
   useEffect(() => {
     loadFiles()
-    loadCategories()
+    loadTags()
     loadUsers()
   }, [])
 
@@ -37,9 +37,9 @@ export default function Admin() {
     setFiles(data || [])
   }
 
-  const loadCategories = async () => {
-    const { data } = await supabase.from('categories').select('*').order('name')
-    setCategories(data || [])
+  const loadTags = async () => {
+    const { data } = await supabase.from('tags').select('*').order('name')
+    setTags(data || [])
   }
 
   const loadUsers = async () => {
@@ -66,23 +66,18 @@ export default function Admin() {
     showMsg('Title updated', 'success')
   }
 
-  const handleCreateCategory = async () => {
-    if (!newCategory) return
-    const { error } = await supabase.from('categories').insert({ name: newCategory, parent_id: parentCategory || null })
-    if (!error) {
-      setNewCategory('')
-      setParentCategory('')
-      loadCategories()
-      showMsg('Category created', 'success')
-    } else {
-      showMsg(error.message, 'error')
-    }
+  const handleCreateTag = async () => {
+    if (!newTag) return
+    const name = newTag.toLowerCase().trim()
+    const { error } = await supabase.from('tags').insert({ name })
+    if (!error) { setNewTag(''); loadTags(); showMsg('Tag created', 'success') }
+    else showMsg(error.message, 'error')
   }
 
-  const handleDeleteCategory = async (id) => {
-    await supabase.from('categories').delete().eq('id', id)
-    loadCategories()
-    showMsg('Category deleted', 'success')
+  const handleDeleteTag = async (id) => {
+    await supabase.from('tags').delete().eq('id', id)
+    loadTags()
+    showMsg('Tag deleted', 'success')
   }
 
   const handleCreateUser = async () => {
@@ -131,7 +126,7 @@ export default function Admin() {
       <Tabs defaultValue="files">
         <TabsList>
           <TabsTrigger value="files"><FileText className="mr-1 h-4 w-4" /> Files</TabsTrigger>
-          <TabsTrigger value="categories"><FolderTree className="mr-1 h-4 w-4" /> Categories</TabsTrigger>
+          <TabsTrigger value="tags"><Tags className="mr-1 h-4 w-4" /> Tags</TabsTrigger>
           <TabsTrigger value="users"><Users className="mr-1 h-4 w-4" /> Users</TabsTrigger>
         </TabsList>
 
@@ -179,57 +174,38 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="categories">
+        <TabsContent value="tags">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Categories</CardTitle>
-              <CardDescription>Organize files with categories.</CardDescription>
+              <CardTitle className="text-base">Tags</CardTitle>
+              <CardDescription>Flat list of tags. Duplicates are auto-merged.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
-                  placeholder="Category name"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="Tag name (e.g. driver, excel, 2025)"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
                   className="flex-1"
                 />
-                <Select value={parentCategory} onChange={(e) => setParentCategory(e.target.value)} className="w-full sm:w-44">
-                  <option value="">No parent</option>
-                  {categories.filter(c => !c.parent_id).map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </Select>
-                <Button onClick={handleCreateCategory}>
+                <Button onClick={handleCreateTag}>
                   <Plus className="mr-1 h-4 w-4" /> Create
                 </Button>
               </div>
-              {categories.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No categories.</p>
+              {tags.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No tags yet. Upload files to auto-generate.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Parent</TableHead>
-                      <TableHead className="w-0"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categories.map((cat) => (
-                      <TableRow key={cat.id}>
-                        <TableCell className="font-medium">{cat.name}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {categories.find(c => c.id === cat.parent_id)?.name || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteCategory(cat.id)}>
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <Badge key={tag.id} variant="secondary" className="text-xs gap-1 pr-1">
+                      {tag.name}
+                      <button onClick={() => handleDeleteTag(tag.id)} className="ml-0.5 hover:text-destructive">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
