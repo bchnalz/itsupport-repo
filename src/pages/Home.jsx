@@ -3,8 +3,11 @@ import { supabase } from '../supabaseClient'
 import { useDownloads } from '@/lib/downloadContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Search, Download, File, X, Tag } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Search, Download, File, X, Tag, Pencil } from 'lucide-react'
 
 const HIGHLIGHT_CLASSES = "inline bg-amber-200/60 dark:bg-amber-500/30 rounded-sm px-0.5"
 
@@ -29,7 +32,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [role, setRole] = useState(null)
-  const [editing, setEditing] = useState(null)
+  const [editFile, setEditFile] = useState(null)
   const [editTitle, setEditTitle] = useState('')
   const [editNotes, setEditNotes] = useState('')
 
@@ -38,10 +41,8 @@ export default function Home() {
   useEffect(() => {
     supabase.from('tags').select('*').order('name').then(({ data }) => setAllTags(data || []))
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        supabase.from('user_roles').select('role').eq('user_id', session.user.id).single()
-          .then(({ data }) => setRole(data?.role || null))
-      }
+      if (session) supabase.from('user_roles').select('role').eq('user_id', session.user.id).single()
+        .then(({ data }) => setRole(data?.role || null))
     })
   }, [])
 
@@ -83,12 +84,14 @@ export default function Home() {
   const clearSearch = () => { setSearch(''); setTagFilter(null) }
 
   const toggleTag = (tagId) => {
-    setTagFilter(prev => prev === tagId ? null : tagId)
-    setRecentTags(prev => {
-      const rest = prev.filter(id => id !== tagId)
-      return [tagId, ...rest].slice(0, 5)
-    })
+    const newFilter = tagFilter === tagId ? null : tagId
+    setTagFilter(newFilter)
+    if (newFilter) {
+      setRecentTags(prev => { const rest = prev.filter(id => id !== tagId); return [tagId, ...rest].slice(0, 5) })
+    }
   }
+
+  const clearTagFilter = () => setTagFilter(null)
 
   const getTagName = (id) => allTags.find(t => t.id === id)?.name || ''
   const formatSize = (bytes) => {
@@ -99,16 +102,17 @@ export default function Home() {
     return `${bytes.toFixed(1)} ${units[i]}`
   }
 
-  const startEdit = (file) => {
-    setEditing(file.id)
+  const openEdit = (file) => {
+    setEditFile(file)
     setEditTitle(file.title)
     setEditNotes(file.notes || '')
   }
 
-  const saveEdit = async (fileId) => {
-    await supabase.from('files').update({ title: editTitle, notes: editNotes || null }).eq('id', fileId)
-    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, title: editTitle, notes: editNotes } : f))
-    setEditing(null)
+  const saveEdit = async () => {
+    if (!editFile) return
+    await supabase.from('files').update({ title: editTitle, notes: editNotes || null }).eq('id', editFile.id)
+    setFiles(prev => prev.map(f => f.id === editFile.id ? { ...f, title: editTitle, notes: editNotes } : f))
+    setEditFile(null)
   }
 
   const removeFileTag = async (fileId, tagId) => {
@@ -131,7 +135,7 @@ export default function Home() {
     }
   }
 
-  const displayedTags = recentTags.length > 0 ? recentTags : allTags.slice(0, 5).map(t => t.id)
+  const displayedTags = recentTags.length > 0 ? recentTags : allTags.map(t => t.id)
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
@@ -140,15 +144,15 @@ export default function Home() {
         <p className="text-sm text-muted-foreground mt-1">Search by title, filename, or tag.</p>
       </div>
 
-      <div className="relative">
+      <div className="relative max-w-md mx-auto">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
-          placeholder='Try "driver epson" or "laporan 2025"...'
+          placeholder='Search files...'
           value={search}
           onChange={(e) => { setSearch(e.target.value); setTagFilter(null) }}
           className="pl-9 pr-9 h-10 text-base text-center placeholder:text-center"
           autoFocus
         />
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         {search && (
           <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
@@ -157,8 +161,8 @@ export default function Home() {
       </div>
 
       {displayedTags.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-1.5">
-          <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+        <div className="flex flex-wrap justify-center gap-1.5 items-center">
+          <Tag className="h-4 w-4 text-muted-foreground" />
           {displayedTags.map((tid) => (
             <Badge
               key={tid}
@@ -169,6 +173,11 @@ export default function Home() {
               {getTagName(tid)}
             </Badge>
           ))}
+          {tagFilter && (
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" onClick={clearTagFilter}>
+              <X className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       )}
 
@@ -195,69 +204,38 @@ export default function Home() {
                   <div className="flex items-start gap-2 min-w-0">
                     <File className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div className="min-w-0 flex-1">
-                      {editing === file.id ? (
-                        <div className="space-y-1">
-                          <Input
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            className="h-7 text-sm"
-                            autoFocus
-                            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(file.id); if (e.key === 'Escape') setEditing(null) }}
-                          />
-                          <Input
-                            value={editNotes}
-                            onChange={(e) => setEditNotes(e.target.value)}
-                            placeholder="Notes..."
-                            className="h-7 text-xs"
-                            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(file.id) }}
-                          />
-                          <div className="flex gap-1">
-                            <Button size="sm" className="h-6 text-xs" onClick={() => saveEdit(file.id)}>Save</Button>
-                            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditing(null)}>Cancel</Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className={`font-medium truncate ${role === 'admin' ? 'cursor-pointer hover:text-primary' : ''}`}
-                              onClick={() => role === 'admin' && startEdit(file)}
-                              title={role === 'admin' ? 'Click to edit' : ''}
-                            >
-                              {highlightText(file.title, searchWords)}
-                            </span>
-                            {file.file_name && file.file_name !== file.title && (
-                              <span className="text-xs text-muted-foreground truncate">
-                                ({highlightText(file.file_name, searchWords)})
-                              </span>
-                            )}
-                          </div>
-                          {file.notes && (
-                            <p
-                              className={`text-xs text-muted-foreground mt-0.5 truncate ${role === 'admin' ? 'cursor-pointer hover:text-foreground' : ''}`}
-                              onClick={() => role === 'admin' && startEdit(file)}
-                            >
-                              {file.notes}
-                            </p>
-                          )}
-                          <div className="flex flex-wrap gap-0.5 mt-0.5">
-                            {file.tagIds?.map((tid) => (
-                              <Badge key={tid} variant="secondary" className="text-[10px] px-1.5 py-0 leading-normal group cursor-pointer hover:bg-primary/20" onClick={() => toggleTag(tid)}>
-                                {getTagName(tid)}
-                                {role === 'admin' && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); removeFileTag(file.id, tid) }}
-                                    className="ml-0.5 hover:text-destructive"
-                                  ><X className="h-2.5 w-2.5 inline" /></button>
-                                )}
-                              </Badge>
-                            ))}
-                            {role === 'admin' && (
-                              <AddTagButton onAdd={(name) => addFileTag(file.id, name)} />
-                            )}
-                          </div>
-                        </>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium truncate">
+                          {highlightText(file.title, searchWords)}
+                        </span>
+                        {file.file_name && file.file_name !== file.title && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            ({highlightText(file.file_name, searchWords)})
+                          </span>
+                        )}
+                        {role === 'admin' && (
+                          <button onClick={() => openEdit(file)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity ml-1">
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      {file.notes && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{file.notes}</p>
                       )}
+                      <div className="flex flex-wrap gap-0.5 mt-0.5">
+                        {file.tagIds?.map((tid) => (
+                          <Badge key={tid} variant="secondary" className="text-[10px] px-1.5 py-0 leading-normal group/badge cursor-pointer hover:bg-primary/20" onClick={() => toggleTag(tid)}>
+                            {getTagName(tid)}
+                            {role === 'admin' && (
+                              <button onClick={(e) => { e.stopPropagation(); removeFileTag(file.id, tid) }}
+                                className="ml-0.5 opacity-0 group-hover/badge:opacity-100 hover:text-destructive">
+                                <X className="h-2.5 w-2.5 inline" />
+                              </button>
+                            )}
+                          </Badge>
+                        ))}
+                        {role === 'admin' && <AddTagButton onAdd={(name) => addFileTag(file.id, name)} />}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -274,6 +252,26 @@ export default function Home() {
           </tbody>
         </table>
       )}
+
+      <Dialog open={!!editFile} onOpenChange={() => setEditFile(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit File</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Title</Label>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditFile(null)}>Cancel</Button>
+            <Button onClick={saveEdit}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -292,14 +290,9 @@ function AddTagButton({ onAdd }) {
 
   return (
     <span className="inline-flex items-center gap-0.5">
-      <input
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
+      <input value={val} onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setOpen(false) }}
-        placeholder="tag"
-        className="w-16 h-5 text-[10px] border rounded px-1 bg-transparent"
-        autoFocus
-      />
+        placeholder="tag" className="w-16 h-5 text-[10px] border rounded px-1 bg-transparent" autoFocus />
       <button onClick={handleAdd} className="text-[10px] text-primary">add</button>
       <button onClick={() => setOpen(false)} className="text-[10px] text-muted-foreground"><X className="h-2.5 w-2.5" /></button>
     </span>
