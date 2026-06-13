@@ -49,11 +49,11 @@ export default function Home() {
 
     let query = supabase
       .from('files')
-      .select('*, file_tags!inner(tag_id)')
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (tagId) {
-      query = query.eq('file_tags.tag_id', tagId)
+      query = query.filter('file_tags.tag_id', 'eq', tagId)
     }
 
     if (words.length > 0) {
@@ -158,6 +158,7 @@ export default function Home() {
               <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Tags</th>
               <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Size</th>
               <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden lg:table-cell">Date</th>
+              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden xl:table-cell">Notes</th>
               <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden lg:table-cell">By</th>
               <th className="py-2 px-3"></th>
             </tr>
@@ -199,6 +200,9 @@ export default function Home() {
                 </td>
                 <td className="py-2.5 px-3 text-muted-foreground text-xs hidden lg:table-cell">
                   <div className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(file.created_at).toLocaleDateString()}</div>
+                </td>
+                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden xl:table-cell max-w-[160px] truncate">
+                  {file.notes || '-'}
                 </td>
                 <td className="py-2.5 px-3 text-muted-foreground text-xs hidden lg:table-cell">
                   <div className="flex items-center gap-1"><User className="h-3 w-3" />{file.uploaded_by_email || '-'}</div>
