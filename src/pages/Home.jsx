@@ -53,7 +53,13 @@ export default function Home() {
       .order('created_at', { ascending: false })
 
     if (tagId) {
-      query = query.filter('file_tags.tag_id', 'eq', tagId)
+      const { data: tagged } = await supabase
+        .from('file_tags')
+        .select('file_id')
+        .eq('tag_id', tagId)
+      const fileIds = (tagged || []).map(t => t.file_id)
+      if (fileIds.length === 0) { setFiles([]); setLoading(false); return }
+      query = query.in('id', fileIds)
     }
 
     if (words.length > 0) {
