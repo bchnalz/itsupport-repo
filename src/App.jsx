@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { DownloadContext } from './lib/downloadContext'
+import { useSessionTimeout } from './hooks/useSessionTimeout'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import Upload from './pages/Upload'
@@ -10,6 +11,7 @@ import Navbar from './components/Navbar'
 import DownloadDrawer, { useDownloadManager } from './components/DownloadDrawer'
 
 function ProtectedRoute({ children, adminOnly = false }) {
+  useSessionTimeout()
   const [session, setSession] = useState(null)
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
