@@ -15,16 +15,25 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('categories')
-      .select('*')
-      .order('name')
-      .then(({ data }) => setCategories(data || []))
-  }, [])
+    if (!search && !categoryFilter) {
+      supabase
+        .from('categories')
+        .select('*')
+        .order('name')
+        .then(({ data }) => setCategories(data || []))
+    }
+  }, [search, categoryFilter])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       setLoading(true)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setLoading(false)
+        return
+      }
+
       let query = supabase
         .from('files')
         .select('*, categories(name)')
@@ -37,11 +46,10 @@ export default function Home() {
         query = query.eq('category_id', categoryFilter)
       }
 
-      query.then(({ data, error }) => {
-        if (error) console.error('Search error:', error)
-        setFiles(data || [])
-        setLoading(false)
-      })
+      const { data, error } = await query
+      if (error) console.error('Search error:', error)
+      setFiles(data || [])
+      setLoading(false)
     }, 200)
 
     return () => clearTimeout(timer)
