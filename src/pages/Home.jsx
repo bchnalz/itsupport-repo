@@ -15,43 +15,35 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!search && !categoryFilter) {
-      supabase
-        .from('categories')
-        .select('*')
-        .order('name')
-        .then(({ data }) => setCategories(data || []))
+    supabase
+      .from('categories')
+      .select('*')
+      .order('name')
+      .then(({ data }) => setCategories(data || []))
+  }, [])
+
+  const fetchFiles = async (searchTerm, categoryId) => {
+    setLoading(true)
+    let query = supabase
+      .from('files')
+      .select('*, categories(name)')
+      .order('created_at', { ascending: false })
+
+    if (searchTerm) {
+      query = query.ilike('title', `%${searchTerm}%`)
     }
-  }, [search, categoryFilter])
+    if (categoryId) {
+      query = query.eq('category_id', categoryId)
+    }
+
+    const { data, error } = await query
+    if (error) console.error('Search error:', error)
+    setFiles(data || [])
+    setLoading(false)
+  }
 
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      setLoading(true)
-
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setLoading(false)
-        return
-      }
-
-      let query = supabase
-        .from('files')
-        .select('*, categories(name)')
-        .order('created_at', { ascending: false })
-
-      if (search) {
-        query = query.or(`title.ilike.%${search}%,file_name.ilike.%${search}%`)
-      }
-      if (categoryFilter) {
-        query = query.eq('category_id', categoryFilter)
-      }
-
-      const { data, error } = await query
-      if (error) console.error('Search error:', error)
-      setFiles(data || [])
-      setLoading(false)
-    }, 200)
-
+    const timer = setTimeout(() => fetchFiles(search, categoryFilter), 200)
     return () => clearTimeout(timer)
   }, [search, categoryFilter])
 
