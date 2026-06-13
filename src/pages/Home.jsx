@@ -190,72 +190,74 @@ export default function Home() {
       )}
 
       {!loading && files.length > 0 && (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left font-medium text-muted-foreground py-1.5 px-2">File</th>
-              <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden sm:table-cell w-[72px]">Size</th>
-              <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden md:table-cell w-[96px]">Date</th>
-              <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden lg:table-cell w-[128px]">By</th>
-              <th className="py-1.5 px-2 w-0"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {files.map((file) => (
-              <tr key={file.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors group">
-                <td className="py-1.5 px-2">
-                  <div className="flex items-start gap-2 min-w-0">
-                    <File className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium truncate">
-                          {highlightText(file.title, searchWords)}
-                        </span>
-                        {file.file_name && file.file_name !== file.title && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            ({highlightText(file.file_name, searchWords)})
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="w-full text-sm min-w-[320px]">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left font-medium text-muted-foreground py-1.5 px-2">File</th>
+                <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden sm:table-cell w-[72px]">Size</th>
+                <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden md:table-cell w-[96px]">Date</th>
+                <th className="text-left font-medium text-muted-foreground py-1.5 px-2 hidden lg:table-cell w-[128px]">By</th>
+                <th className="py-1.5 px-2 w-0"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {files.map((file) => (
+                <tr key={file.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors group">
+                  <td className="py-1.5 px-2 max-w-0">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <File className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium truncate block max-w-full">
+                            {highlightText(file.title, searchWords)}
                           </span>
+                          {file.file_name && file.file_name !== file.title && (
+                            <span className="text-xs text-muted-foreground truncate max-w-full block">
+                              ({highlightText(file.file_name, searchWords)})
+                            </span>
+                          )}
+                        </div>
+                        {file.notes && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-full">{file.notes}</p>
                         )}
-                      </div>
-                      {file.notes && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{file.notes}</p>
-                      )}
-                      <div className="flex flex-wrap gap-0.5 mt-0.5">
-                        {file.tagIds?.map((tid) => (
-                          <Badge key={tid} variant="secondary" className="text-[10px] px-1.5 py-0 leading-normal group/badge cursor-pointer hover:bg-primary/20" onClick={() => toggleTag(tid)}>
-                            {getTagName(tid)}
-                            {role === 'admin' && (
-                              <button onClick={(e) => { e.stopPropagation(); removeFileTag(file.id, tid) }}
-                                className="ml-0.5 opacity-0 group-hover/badge:opacity-100 hover:text-destructive">
-                                <X className="h-2.5 w-2.5 inline" />
-                              </button>
-                            )}
-                          </Badge>
-                        ))}
-                        {role === 'admin' && <AddTagButton onAdd={(name) => addFileTag(file.id, name)} />}
+                        <div className="flex flex-wrap gap-0.5 mt-0.5">
+                          {file.tagIds?.map((tid) => (
+                            <Badge key={tid} variant="secondary" className="text-[10px] px-1.5 py-0 leading-normal group/badge cursor-pointer hover:bg-primary/20" onClick={() => toggleTag(tid)}>
+                              {getTagName(tid)}
+                              {role === 'admin' && (
+                                <button onClick={(e) => { e.stopPropagation(); removeFileTag(file.id, tid) }}
+                                  className="ml-0.5 opacity-0 group-hover/badge:opacity-100 hover:text-destructive">
+                                  <X className="h-2.5 w-2.5 inline" />
+                                </button>
+                              )}
+                            </Badge>
+                          ))}
+                          {role === 'admin' && <AddTagButton onAdd={(name) => addFileTag(file.id, name)} />}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="py-1.5 px-2 text-muted-foreground text-xs tabular-nums hidden sm:table-cell">{formatSize(file.file_size)}</td>
-                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden md:table-cell whitespace-nowrap">{new Date(file.created_at).toLocaleDateString()}</td>
-                <td className="py-1.5 px-2 text-muted-foreground text-xs hidden lg:table-cell truncate max-w-[128px]">{file.uploaded_by_email || '-'}</td>
-                <td className="py-1.5 px-2">
-                  <div className="flex items-center gap-0.5">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(file)}>
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    {role === 'admin' && (
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(file)}>
-                        <Pencil className="h-3.5 w-3.5" />
+                  </td>
+                  <td className="py-1.5 px-2 text-muted-foreground text-xs tabular-nums hidden sm:table-cell">{formatSize(file.file_size)}</td>
+                  <td className="py-1.5 px-2 text-muted-foreground text-xs hidden md:table-cell whitespace-nowrap">{new Date(file.created_at).toLocaleDateString()}</td>
+                  <td className="py-1.5 px-2 text-muted-foreground text-xs hidden lg:table-cell truncate max-w-[128px]">{file.uploaded_by_email || '-'}</td>
+                  <td className="py-1.5 px-2">
+                    <div className="flex items-center gap-0.5">
+                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => handleDownload(file)}>
+                        <Download className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      {role === 'admin' && (
+                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => openEdit(file)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <Dialog open={!!editFile} onOpenChange={() => setEditFile(null)}>

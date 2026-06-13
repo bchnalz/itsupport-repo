@@ -101,7 +101,7 @@ export default function DownloadDrawer({ manager }) {
   if (!downloads || downloads.length === 0) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80">
+    <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-sm">
       {collapsed ? (
         <Button
           onClick={() => setCollapsed(false)}

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { HardDrive, CheckCircle2 } from 'lucide-react'
+import { HardDrive, CheckCircle2, Menu, X } from 'lucide-react'
 
 export default function Navbar() {
   const [session, setSession] = useState(null)
@@ -49,43 +49,94 @@ export default function Navbar() {
     }
   }
 
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   if (!session) return null
+
+  const navLinks = (
+    <>
+      <Button variant="ghost" size="sm" asChild onClick={() => setMobileOpen(false)}>
+        <Link to="/">Home</Link>
+      </Button>
+      <Button variant="ghost" size="sm" asChild onClick={() => setMobileOpen(false)}>
+        <Link to="/upload">Upload</Link>
+      </Button>
+      {role === 'admin' && (
+        <Button variant="ghost" size="sm" asChild onClick={() => setMobileOpen(false)}>
+          <Link to="/admin">Admin</Link>
+        </Button>
+      )}
+    </>
+  )
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center px-6">
-        <div className="flex items-center gap-1 font-semibold text-sm mr-8">
+      <div className="flex h-14 items-center gap-1 px-3 sm:px-6">
+        <div className="flex items-center gap-1 font-semibold text-sm mr-2 sm:mr-6 shrink-0">
           <HardDrive className="h-4 w-4" />
         </div>
-        <nav className="flex items-center gap-1 text-sm">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/">Home</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/upload">Upload</Link>
-          </Button>
-          {role === 'admin' && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/admin">Admin</Link>
-            </Button>
-          )}
+
+        {/* Desktop nav */}
+        <nav className="hidden sm:flex items-center gap-1 text-sm">
+          {navLinks}
         </nav>
-        <div className="ml-auto flex items-center gap-3">
+
+        {/* Mobile hamburger */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="sm:hidden ml-1 h-8 w-8 p-0"
+          onClick={() => setMobileOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        {/* Mobile drawer overlay */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 sm:hidden">
+            <div className="fixed inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+            <div className="fixed top-0 left-0 bottom-0 w-64 bg-background border-r shadow-xl flex flex-col pt-4 animate-in slide-in-from-left">
+              <div className="flex items-center justify-between px-4 pb-3 border-b">
+                <span className="text-sm font-semibold">Menu</span>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setMobileOpen(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <nav className="flex flex-col gap-1 p-3">
+                {navLinks}
+              </nav>
+              <div className="mt-auto border-t p-3 space-y-2">
+                <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
+                <Button variant="outline" size="sm" className="w-full text-xs" onClick={handleConnectDrive}>
+                  <HardDrive className="mr-1 h-3 w-3" />
+                  {driveConnected ? 'Drive Connected' : 'Connect Drive'}
+                </Button>
+                <Separator className="my-1" />
+                <Button variant="ghost" size="sm" className="w-full" onClick={handleLogout}>
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Right section — desktop */}
+        <div className="ml-auto hidden sm:flex items-center gap-2 shrink-0">
           {driveConnected ? (
             <span className="text-xs text-emerald-600 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Drive connected
+              <CheckCircle2 className="h-3.5 w-3.5" /> Drive
             </span>
           ) : (
-            <Button variant="outline" size="sm" onClick={handleConnectDrive} className="text-xs">
+            <Button variant="outline" size="sm" onClick={handleConnectDrive} className="text-xs h-8 px-2.5">
               <HardDrive className="mr-1 h-3 w-3" />
-              Connect Drive
+              Drive
             </Button>
           )}
-          <span className="text-xs text-muted-foreground hidden sm:inline">
+          <span className="text-xs text-muted-foreground hidden md:inline max-w-[120px] truncate">
             {session.user.email}
           </span>
-          <Separator orientation="vertical" className="h-4 hidden sm:block" />
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
+          <Separator orientation="vertical" className="h-4 hidden md:block" />
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs h-8">
             Logout
           </Button>
         </div>

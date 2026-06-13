@@ -140,35 +140,37 @@ export default function Admin() {
               {files.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No files.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead className="hidden md:table-cell">Drive ID</TableHead>
-                      <TableHead className="hidden sm:table-cell">Created</TableHead>
-                      <TableHead className="w-0"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {files.map((f) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="font-medium">{f.title}</TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground font-mono">{f.drive_file_id}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{new Date(f.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditFile(f)}>
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(f)}>
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead className="hidden md:table-cell">Drive ID</TableHead>
+                        <TableHead className="hidden sm:table-cell">Created</TableHead>
+                        <TableHead className="w-0"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {files.map((f) => (
+                        <TableRow key={f.id}>
+                          <TableCell className="font-medium min-w-0 max-w-0"><span className="truncate block">{f.title}</span></TableCell>
+                          <TableCell className="hidden md:table-cell text-xs text-muted-foreground font-mono">{f.drive_file_id}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{new Date(f.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleEditFile(f)} className="h-9 w-9 p-0">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(f)} className="h-9 w-9 p-0">
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -244,33 +246,35 @@ export default function Admin() {
               {users.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No users.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead className="w-0"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((u) => (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-medium">{u.email || u.user_id}</TableCell>
-                        <TableCell>
-                          <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>
-                            <Shield className="mr-1 h-3 w-3" />
-                            {u.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeactivateUser(u.user_id)}>
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </Button>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="w-0"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((u) => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium min-w-0 max-w-0"><span className="truncate block">{u.email || u.user_id}</span></TableCell>
+                          <TableCell>
+                            <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>
+                              <Shield className="mr-1 h-3 w-3" />
+                              {u.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeactivateUser(u.user_id)} className="h-9 w-9 p-0">
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
