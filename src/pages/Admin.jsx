@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
-import { Plus, Shield, Tags, Users, X, Trash2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Plus, Shield, Tags, Users, X, Trash2, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react'
 
 export default function Admin() {
   const [users, setUsers] = useState([])
@@ -19,6 +19,7 @@ export default function Admin() {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('')
   const [activeTab, setActiveTab] = useState('tags')
+  const [confirmUser, setConfirmUser] = useState(null)
 
   useEffect(() => {
     loadTags()
@@ -73,15 +74,17 @@ export default function Admin() {
     }
   }
 
-  const handleDeactivateUser = async (userId) => {
+  const handleDeactivateUser = async () => {
+    if (!confirmUser) return
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deactivate-user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ userId })
+      body: JSON.stringify({ userId: confirmUser.user_id })
     })
     if (res.ok) { loadUsers(); showMsg('User deactivated', 'success') }
     else showMsg('Failed to deactivate user', 'error')
+    setConfirmUser(null)
   }
 
   return (
@@ -249,7 +252,7 @@ export default function Admin() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeactivateUser(u.user_id)}
+                              onClick={() => setConfirmUser(u)}
                               className="h-9 w-9 p-0 transition-all duration-200 hover:bg-destructive/10 hover:text-destructive"
                               title="Deactivate user"
                             >
@@ -260,6 +263,28 @@ export default function Admin() {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+
+              {confirmUser && (
+                <div className="animate-in fade-in slide-in-from-top-1 duration-200 border rounded-lg p-4 bg-destructive/5 border-destructive/20">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">Deactivate user</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This will permanently remove <strong>{confirmUser.email || confirmUser.user_id}</strong> from the system. They will lose all access immediately. This cannot be undone.
+                      </p>
+                      <div className="flex items-center gap-2 mt-3">
+                        <Button size="sm" variant="destructive" onClick={handleDeactivateUser} className="transition-all duration-200 active:scale-[0.97]">
+                          <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Deactivate
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setConfirmUser(null)} className="transition-all duration-200">
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
