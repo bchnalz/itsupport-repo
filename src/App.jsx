@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
+import { DownloadContext } from './lib/downloadContext'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import Upload from './pages/Upload'
 import Admin from './pages/Admin'
 import Navbar from './components/Navbar'
+import DownloadDrawer, { useDownloadManager } from './components/DownloadDrawer'
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const [session, setSession] = useState(null)
@@ -44,17 +46,22 @@ function ProtectedRoute({ children, adminOnly = false }) {
 }
 
 export default function App() {
+  const dm = useDownloadManager()
+
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
-        </Routes>
-      </main>
-    </div>
+    <DownloadContext.Provider value={dm}>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+          </Routes>
+        </main>
+        <DownloadDrawer manager={dm} />
+      </div>
+    </DownloadContext.Provider>
   )
 }

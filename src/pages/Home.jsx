@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
+import { useDownloads } from '@/lib/downloadContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import { Search, Download, File, Calendar, User, X } from 'lucide-react'
 
 export default function Home() {
+  const { startDownload } = useDownloads() || {}
   const [files, setFiles] = useState([])
   const [categories, setCategories] = useState([])
   const [search, setSearch] = useState('')
@@ -47,37 +49,8 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [search, categoryFilter, fetchFiles])
 
-  const handleDownload = async (file) => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
-
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-download`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ fileId: file.drive_file_id }),
-      }
-    )
-
-    if (!res.ok) return
-
-    const blob = await res.blob()
-    const disposition = res.headers.get('Content-Disposition')
-    let filename = 'download'
-    if (disposition) {
-      const match = disposition.match(/filename="?([^";\n]+)"?/)
-      if (match) filename = match[1]
-    }
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+  const handleDownload = (file) => {
+    if (startDownload) startDownload(file)
   }
 
   const clearSearch = () => {

@@ -3,6 +3,7 @@ import { getAccessToken } from "../_shared/driveAuth.ts";
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "content-disposition, x-filename",
 };
 
 function getUserId(authHeader: string): string {
@@ -51,11 +52,13 @@ Deno.serve(async (req) => {
     }
 
     const blob = await fileRes.blob();
+    const filename = meta.name || "download";
     return new Response(blob, {
       headers: {
         ...corsHeaders,
         "Content-Type": meta.mimeType || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${meta.name || "download"}"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "X-Filename": filename,
       },
     });
   } catch (e) {
