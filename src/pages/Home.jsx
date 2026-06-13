@@ -86,10 +86,15 @@ export default function Home() {
   const toggleTag = (tagId) => {
     const newFilter = tagFilter === tagId ? null : tagId
     setTagFilter(newFilter)
-    if (newFilter) {
-      setRecentTags(prev => { const rest = prev.filter(id => id !== tagId); return [tagId, ...rest].slice(0, 5) })
-    }
+    setRecentTags(prev => { const rest = prev.filter(id => id !== tagId); return [tagId, ...rest].slice(0, 5) })
   }
+
+  const sortedTags = (() => {
+    const recentSet = new Set(recentTags)
+    const recent = recentTags.filter(id => allTags.some(t => t.id === id))
+    const rest = allTags.filter(t => !recentSet.has(t.id)).map(t => t.id)
+    return [...recent, ...rest]
+  })()
 
   const clearTagFilter = () => setTagFilter(null)
 
@@ -135,8 +140,6 @@ export default function Home() {
     }
   }
 
-  const displayedTags = recentTags.length > 0 ? recentTags : allTags.map(t => t.id)
-
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
       <div className="text-center">
@@ -160,10 +163,10 @@ export default function Home() {
         )}
       </div>
 
-      {displayedTags.length > 0 && (
+      {sortedTags.length > 0 && (
         <div className="flex flex-wrap justify-center gap-1.5 items-center">
           <Tag className="h-4 w-4 text-muted-foreground" />
-          {displayedTags.map((tid) => (
+          {sortedTags.map((tid) => (
             <Badge
               key={tid}
               variant={tagFilter === tid ? 'default' : 'secondary'}
