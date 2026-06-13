@@ -129,8 +129,7 @@ export default function Home() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              <th className="text-left font-medium text-muted-foreground py-2 px-3">Title</th>
-              <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden md:table-cell">Filename</th>
+              <th className="text-left font-medium text-muted-foreground py-2 px-3">File</th>
               <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Category</th>
               <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden sm:table-cell">Size</th>
               <th className="text-left font-medium text-muted-foreground py-2 px-3 hidden lg:table-cell">Date</th>
@@ -141,16 +140,18 @@ export default function Home() {
           <tbody>
             {files.map((file) => (
               <tr key={file.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                <td className="py-2.5 px-3 font-medium">
+                <td className="py-2.5 px-3">
                   <div className="flex items-center gap-2">
-                    <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="truncate max-w-[180px]">{file.title}</span>
+                    <File className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <span className="font-medium truncate block">{file.title}</span>
+                      {file.file_name && file.file_name !== file.title && (
+                        <span className="text-xs text-muted-foreground truncate block">{file.file_name}</span>
+                      )}
+                    </div>
                   </div>
                 </td>
-                <td className="py-2.5 px-3 text-muted-foreground hidden md:table-cell max-w-[120px] truncate">
-                  {file.file_name || '-'}
-                </td>
-                <td className="py-2.5 px-3 text-muted-foreground hidden sm:table-cell">
+                <td className="py-2.5 px-3 text-muted-foreground text-xs hidden sm:table-cell">
                   {getCategoryName(file.category_id)}
                 </td>
                 <td className="py-2.5 px-3 text-muted-foreground text-xs hidden sm:table-cell">
