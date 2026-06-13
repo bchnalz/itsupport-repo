@@ -1,23 +1,24 @@
-const SERVICE_ACCOUNT_JSON = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON")!;
+const CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
+const CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 let cachedToken: { token: string; expires: number } | null = null;
 
-function base64url(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
+async function getRefreshToken(): Promise<string> {
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "google_refresh_token")
+    .single();
 
-async function signJWT(header: string, payload: string, key: CryptoKey): Promise<string> {
-  const encoder = new TextEncoder();
-  const toSign = `${header}.${payload}`;
-  const sig = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    encoder.encode(toSign)
-  );
-  return `${toSign}.${base64url(sig)}`;
+  if (error || !data) {
+    throw new Error("Google refresh token not found. Run OAuth setup first.");
+  }
+
+  return data.value;
 }
 
 async function getAccessToken(): Promise<string> {
@@ -25,55 +26,16 @@ async function getAccessToken(): Promise<string> {
     return cachedToken.token;
   }
 
-  const sa = JSON.parse(SERVICE_ACCOUNT_JSON);
-  const now = Math.floor(Date.now() / 1000);
+  const refreshToken = await getRefreshToken();
 
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-  };
-
-  const claim = {
-    iss: sa.client_email,
-    scope: "https://www.googleapis.com/auth/drive.file",
-    aud: sa.token_uri || "https://oauth2.googleapis.com/token",
-    exp: now + 3600,
-    iat: now,
-  };
-
-  const encoder = new TextEncoder();
-  const headerB64 = base64url(encoder.encode(JSON.stringify(header)));
-  const claimB64 = base64url(encoder.encode(JSON.stringify(claim)));
-
-  const pemContent = sa.private_key;
-  const pemHeader = "-----BEGIN PRIVATE KEY-----";
-  const pemFooter = "-----END PRIVATE KEY-----";
-  const der = pemContent
-    .replace(pemHeader, "")
-    .replace(pemFooter, "")
-    .replace(/\s/g, "");
-  const binaryStr = atob(der);
-  const bytes = new Uint8Array(binaryStr.length);
-  for (let i = 0; i < binaryStr.length; i++) {
-    bytes[i] = binaryStr.charCodeAt(i);
-  }
-
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    bytes.buffer,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const jwt = await signJWT(headerB64, claimB64, key);
-
-  const res = await fetch(sa.token_uri || "https://oauth2.googleapis.com/token", {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: jwt,
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
     }),
   });
 
@@ -83,7 +45,7 @@ async function getAccessToken(): Promise<string> {
   }
 
   const data = await res.json();
-  cachedToken = { token: data.access_token, expires: Date.now() + data.expires_in * 1000 - 60000 };
+  cachedToken = { token: data.access_token, expires: Date.now() + (data.expires_in || 3600) * 1000 - 60000 };
   return cachedToken.token;
 }
 
