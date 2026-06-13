@@ -143,7 +143,7 @@ export default function Home() {
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Repository</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">IT SUPPORT REPOSITORY</h1>
         <p className="text-sm text-muted-foreground mt-1">Search by title, filename, or tag.</p>
       </div>
 

@@ -50,7 +50,6 @@ export default function Navbar() {
       <div className="flex h-14 items-center px-6">
         <div className="flex items-center gap-1 font-semibold text-sm mr-8">
           <HardDrive className="h-4 w-4" />
-          <span>itsupport-repo</span>
         </div>
         <nav className="flex items-center gap-1 text-sm">
           <Button variant="ghost" size="sm" asChild>
