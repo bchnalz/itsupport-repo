@@ -121,6 +121,10 @@ Deno.serve(async (req) => {
     const file = formData.get("file");
     const title = formData.get("title")?.toString() || file.name;
     const notes = formData.get("notes")?.toString() || "";
+    const tagsJson = formData.get("tags")?.toString() || "[]";
+    let tags: string[] = [];
+
+    try { tags = JSON.parse(tagsJson) } catch {}
 
     if (!file || typeof file === "string") {
       return new Response(JSON.stringify({ error: "No file provided" }), {
@@ -172,7 +176,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const tags = await generateTags(title, file.name, notes);
+    if (tags.length === 0) {
+      tags = await generateTags(title, file.name, notes);
+    }
     await saveTags(supabase, fileRecord.id, tags);
 
     return new Response(JSON.stringify({ success: true, fileId: driveFile.id, tags }), {
