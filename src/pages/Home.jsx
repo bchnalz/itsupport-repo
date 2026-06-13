@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,11 +22,11 @@ export default function Home() {
       .then(({ data }) => setCategories(data || []))
   }, [])
 
-  const fetchFiles = async (searchTerm, categoryId) => {
+  const fetchFiles = useCallback(async (searchTerm, categoryId) => {
     setLoading(true)
     let query = supabase
       .from('files')
-      .select('*, categories(name)')
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (searchTerm) {
@@ -37,15 +37,15 @@ export default function Home() {
     }
 
     const { data, error } = await query
-    if (error) console.error('Search error:', error)
+    if (error) console.error('Fetch error:', error.message, error.details)
     setFiles(data || [])
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => fetchFiles(search, categoryFilter), 200)
     return () => clearTimeout(timer)
-  }, [search, categoryFilter])
+  }, [search, categoryFilter, fetchFiles])
 
   const handleDownload = async (file) => {
     const { data } = await supabase.functions.invoke('drive-download', {
@@ -57,6 +57,12 @@ export default function Home() {
   const clearSearch = () => {
     setSearch('')
     setCategoryFilter('')
+  }
+
+  const getCategoryName = (categoryId) => {
+    if (!categoryId) return '-'
+    const cat = categories.find(c => c.id === categoryId)
+    return cat?.name || '-'
   }
 
   const formatSize = (bytes) => {
@@ -80,7 +86,7 @@ export default function Home() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search files by title or notes..."
+                placeholder="Search files by title..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 pr-9"
@@ -120,6 +126,7 @@ export default function Home() {
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>
+                <TableHead className="hidden md:table-cell">Filename</TableHead>
                 <TableHead className="hidden md:table-cell">Category</TableHead>
                 <TableHead className="hidden sm:table-cell">Size</TableHead>
                 <TableHead className="hidden lg:table-cell">Date</TableHead>
@@ -133,16 +140,14 @@ export default function Home() {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <span className="truncate max-w-[200px] block">{file.title}</span>
-                        {file.file_name && file.file_name !== file.title && (
-                          <span className="text-xs text-muted-foreground">{file.file_name}</span>
-                        )}
-                      </div>
+                      <span className="truncate max-w-[160px]">{file.title}</span>
                     </div>
                   </TableCell>
+                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[120px] truncate">
+                    {file.file_name || '-'}
+                  </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {file.categories?.name || '-'}
+                    {getCategoryName(file.category_id)}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                     {formatSize(file.file_size)}
