@@ -2,21 +2,31 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Eye, EyeOff, LogIn, HardDrive } from 'lucide-react'
+import { HardDrive } from 'lucide-react'
 
 export default function Navbar() {
   const [session, setSession] = useState(null)
+  const [role, setRole] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) fetchRole(session.user.id)
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) fetchRole(session.user.id)
+      else setRole(null)
+    })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  const fetchRole = async (userId) => {
+    const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).single()
+    setRole(data?.role || null)
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -49,9 +59,11 @@ export default function Navbar() {
           <Button variant="ghost" size="sm" asChild>
             <Link to="/upload">Upload</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/admin">Admin</Link>
-          </Button>
+          {role === 'admin' && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/admin">Admin</Link>
+            </Button>
+          )}
         </nav>
         <div className="ml-auto flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={handleConnectDrive} className="text-xs">
