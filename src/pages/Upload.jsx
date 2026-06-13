@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -11,6 +12,7 @@ import { UploadCloud, Tag, X, Plus, Sparkles } from 'lucide-react'
 export default function Upload() {
   const [file, setFile] = useState(null)
   const [title, setTitle] = useState('')
+  const [notes, setNotes] = useState('')
   const [tags, setTags] = useState([])
   const [customTag, setCustomTag] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -71,6 +73,7 @@ export default function Upload() {
     formData.append('file', file)
     formData.append('title', title)
     formData.append('tags', JSON.stringify(tags))
+    formData.append('notes', notes)
 
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
@@ -195,6 +198,17 @@ export default function Upload() {
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Description</Label>
+              <Textarea
+                id="notes"
+                placeholder="Optional description or notes about this file..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
             </div>
 
             {uploading && (

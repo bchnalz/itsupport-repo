@@ -18,12 +18,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const prompt = `Extract 3-5 concise tags from this file info. Tags: lowercase, 1-3 words each. Focus on: software name, type, version, use case, format. Return ONLY a JSON array of strings. No other text.
+    const prompt = `Generate exactly 4 concise tags for this file. Tags: lowercase, 1-3 words each. Focus on: software name, type, version, use case, format, department. Return ONLY a JSON array of exactly 4 strings. No other text.
 
 Title: ${title}
 Filename: ${fileName || title}
 
-Example: ["excel", "laporan", "2025"]`;
+Example: ["excel", "laporan", "keuangan", "2025"]`;
 
     const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
@@ -48,7 +48,7 @@ Example: ["excel", "laporan", "2025"]`;
     const data = await res.json();
     try {
       const tags: string[] = JSON.parse(data.choices[0].message.content);
-      return new Response(JSON.stringify({ tags: tags.filter(t => t.length > 1).slice(0, 5) }), {
+      return new Response(JSON.stringify({ tags: tags.filter(t => t.length > 1).slice(0, 4) }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch {
@@ -64,10 +64,10 @@ Example: ["excel", "laporan", "2025"]`;
 });
 
 function fallback(title: string, fileName: string): string[] {
-  return (fileName || title)
+  const words = (fileName || title)
     .replace(/\.[^.]+$/, "")
     .split(/[\s_\-.,;:]+/)
     .filter(w => w.length > 1)
-    .map(w => w.toLowerCase())
-    .slice(0, 5);
+    .map(w => w.toLowerCase());
+  return [...new Set(words)].slice(0, 4);
 }
