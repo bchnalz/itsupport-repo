@@ -15,7 +15,25 @@ function ProtectedRoute({ children, adminOnly = false }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let cancelled = false
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (cancelled) return
+      setSession(session)
+      if (session) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single()
+        if (!cancelled) setRole(data?.role || null)
+      }
+      if (!cancelled) setLoading(false)
+    }
+
+    checkAuth()
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) {
         supabase
@@ -23,20 +41,13 @@ function ProtectedRoute({ children, adminOnly = false }) {
           .select('role')
           .eq('user_id', session.user.id)
           .single()
-          .then(({ data }) => {
-            setRole(data?.role || null)
-            setLoading(false)
-          })
+          .then(({ data }) => setRole(data?.role || null))
       } else {
-        setLoading(false)
+        setRole(null)
       }
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
-    return () => listener.subscription.unsubscribe()
+    return () => { cancelled = true; listener.subscription.unsubscribe() }
   }, [])
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><p className="text-muted-foreground">Loading...</p></div>
