@@ -51,19 +51,50 @@ export default function Home() {
     setLoading(true); setHasSearched(true)
 
     const words = searchTerm.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0)
-    let query = supabase.from('files').select('*').order('created_at', { ascending: false })
 
-    if (tagId) {
-      const { data: tagged } = await supabase.from('file_tags').select('file_id').eq('tag_id', tagId)
-      const fileIds = (tagged || []).map(t => t.file_id)
-      if (fileIds.length === 0) { setFiles([]); setLoading(false); return }
-      query = query.in('id', fileIds)
-    }
+    let allFileIds = null
+
+    // Search by title + file_name
+    let query = supabase.from('files').select('id').order('created_at', { ascending: false })
     if (words.length > 0) {
       query = query.or(words.map(w => `title.ilike.%${w}%,file_name.ilike.%${w}%`).join(','))
     }
+    if (tagId) {
+      const { data: tagged } = await supabase.from('file_tags').select('file_id').eq('tag_id', tagId)
+      const tagFileIds = (tagged || []).map(t => t.file_id)
+      if (tagFileIds.length === 0) { setFiles([]); setLoading(false); return }
+      query = query.in('id', tagFileIds)
+      allFileIds = tagFileIds
+    }
 
-    const { data, error } = await query
+    // Also search by tag name
+    if (words.length > 0) {
+      const matchingTags = allTags.filter(t => words.some(w => t.name.includes(w)))
+      if (matchingTags.length > 0) {
+        const { data: tagMatches } = await supabase.from('file_tags')
+          .select('file_id')
+          .in('tag_id', matchingTags.map(t => t.id))
+        const tagMatchIds = (tagMatches || []).map(t => t.file_id)
+        if (tagMatchIds.length > 0) {
+          if (allFileIds) {
+            allFileIds = [...new Set([...allFileIds, ...tagMatchIds])]
+          } else {
+            allFileIds = tagMatchIds
+          }
+        }
+      }
+    }
+
+    if (allFileIds && allFileIds.length === 0) { setFiles([]); setLoading(false); return }
+
+    let finalQuery = supabase.from('files').select('*').order('created_at', { ascending: false })
+    if (allFileIds) {
+      finalQuery = finalQuery.in('id', allFileIds)
+    } else if (!words.length && !tagId) {
+      setFiles([]); setLoading(false); return
+    }
+
+    const { data, error } = await finalQuery
     if (error) console.error('Fetch error:', error.message)
 
     const unique = data ? data.filter((f, i, arr) => arr.findIndex(x => x.id === f.id) === i) : []
@@ -73,7 +104,7 @@ export default function Home() {
     }))
     setFiles(enriched)
     setLoading(false)
-  }, [])
+  }, [allTags])
 
   useEffect(() => {
     const timer = setTimeout(() => fetchFiles(search, tagFilter), 200)
