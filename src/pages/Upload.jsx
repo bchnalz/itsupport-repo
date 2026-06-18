@@ -22,7 +22,9 @@ export default function Upload() {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const debounceRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   const suggestTags = useCallback(async (t, fn) => {
     if (!t || t.length < 2) { setTags([]); return }
@@ -45,10 +47,15 @@ export default function Upload() {
   }, [title, file, suggestTags])
 
   const handleFileChange = (e) => {
-    const f = e.target.files[0]
+    const f = e.target.files?.[0] || e.dataTransfer?.files?.[0]
+    if (!f) return
     setFile(f)
-    if (f) suggestTags(title || f.name.replace(/\.[^.]+$/, ''), f.name)
+    suggestTags(title || f.name.replace(/\.[^.]+$/, ''), f.name)
   }
+
+  const handleDragOver = (e) => { e.preventDefault(); setDragOver(true) }
+  const handleDragLeave = () => setDragOver(false)
+  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFileChange(e) }
 
   const removeTag = (index) => setTags(prev => prev.filter((_, i) => i !== index))
   const addCustomTag = () => {
@@ -133,8 +140,22 @@ export default function Upload() {
           <CardContent className="space-y-5 pt-6">
             <div className="space-y-2">
               <Label htmlFor="file">Choose file</Label>
-              <div className="border-2 border-dashed rounded-md p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer relative">
-                <Input id="file" type="file" onChange={handleFileChange} required className="absolute inset-0 opacity-0 cursor-pointer" />
+              <div
+                className={`border-2 border-dashed rounded-md p-8 text-center transition-colors cursor-pointer ${
+                  dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/30'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  id="file"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
                 {file ? (
                   <div className="space-y-1">
                     <p className="font-medium text-sm">{file.name}</p>
