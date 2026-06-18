@@ -39,7 +39,7 @@ export default function Home() {
   const searchWords = search.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0)
 
   useEffect(() => {
-    supabase.from('tags').select('*').order('name').then(({ data }) => setAllTags(data || []))
+    supabase.from('tags').select('*').order('created_at', { ascending: false }).limit(5).then(({ data }) => setAllTags(data || []))
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) supabase.from('user_roles').select('role').eq('user_id', session.user.id).single()
         .then(({ data }) => setRole(data?.role || null))
@@ -120,12 +120,9 @@ export default function Home() {
     setRecentTags(prev => { const rest = prev.filter(id => id !== tagId); return [tagId, ...rest].slice(0, 5) })
   }
 
-  const sortedTags = (() => {
-    const recentSet = new Set(recentTags)
-    const recent = recentTags.filter(id => allTags.some(t => t.id === id))
-    const rest = allTags.filter(t => !recentSet.has(t.id)).map(t => t.id)
-    return [...recent, ...rest]
-  })()
+  const sortedTags = recentTags.length > 0
+    ? [...new Set([...recentTags.filter(id => allTags.some(t => t.id === id)), ...allTags.map(t => t.id)])].slice(0, 5)
+    : allTags.map(t => t.id)
 
   const clearTagFilter = () => setTagFilter(null)
 
@@ -178,7 +175,7 @@ export default function Home() {
         <p className="text-sm text-muted-foreground mt-1">Search by title, filename, or tag.</p>
       </div>
 
-      <div className="relative">
+      <div className="relative max-w-md mx-auto">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
           placeholder='Search files...'
