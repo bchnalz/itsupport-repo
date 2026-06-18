@@ -178,7 +178,7 @@ export default function Home() {
         <p className="text-sm text-muted-foreground mt-1">Search by title, filename, or tag.</p>
       </div>
 
-      <div className="relative max-w-md mx-auto">
+      <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
           placeholder='Search files...'
