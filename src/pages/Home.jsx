@@ -55,16 +55,21 @@ export default function Home() {
     let allFileIds = null
 
     // Search by title + file_name
-    let query = supabase.from('files').select('id').order('created_at', { ascending: false })
     if (words.length > 0) {
-      query = query.or(words.map(w => `title.ilike.%${w}%,file_name.ilike.%${w}%`).join(','))
+      const { data: textMatches } = await supabase.from('files')
+        .select('id')
+        .order('created_at', { ascending: false })
+        .or(words.map(w => `title.ilike.%${w}%,file_name.ilike.%${w}%`).join(','))
+      allFileIds = (textMatches || []).map(f => f.id)
     }
+
     if (tagId) {
       const { data: tagged } = await supabase.from('file_tags').select('file_id').eq('tag_id', tagId)
       const tagFileIds = (tagged || []).map(t => t.file_id)
       if (tagFileIds.length === 0) { setFiles([]); setLoading(false); return }
-      query = query.in('id', tagFileIds)
-      allFileIds = tagFileIds
+      allFileIds = allFileIds
+        ? allFileIds.filter(id => tagFileIds.includes(id))
+        : tagFileIds
     }
 
     // Also search by tag name
@@ -90,8 +95,6 @@ export default function Home() {
     let finalQuery = supabase.from('files').select('*').order('created_at', { ascending: false })
     if (allFileIds) {
       finalQuery = finalQuery.in('id', allFileIds)
-    } else if (!words.length && !tagId) {
-      setFiles([]); setLoading(false); return
     }
 
     const { data, error } = await finalQuery
